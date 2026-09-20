@@ -1,0 +1,13 @@
+{
+  "name": "asrum-launcher",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Asrum Launcher - Tauri wrapper cho evowars.io voi titlebar tu ve",
+  "scripts": {
+    "gen-icons": "node scripts/gen-icons.mjs",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

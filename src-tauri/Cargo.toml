@@ -1,0 +1,17 @@
+[package]
+name = "asrum-launcher"
+version = "0.1.0"
+description = "Asrum Launcher - Tauri wrapper cho evowars.io"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-updater = "2"
+# Bat buoc phai khai truc tiep (khong chi qua tauri) — generate_context!()
+# tu sinh code tham chieu thang serde_json:: khi tauri.conf.json co muc
+# "plugins" (o day la updater). Thieu dong nay se loi bien dich E0433
+# "cannot find serde_json in the crate root".
+serde_json = "1"
