@@ -1,0 +1,83 @@
+# Chay khi push tag dang v*.*.* (vd v0.1.0). Build Windows (msi + nsis),
+# tao GitHub Release o dang DRAFT kem file updater (latest.json + chu ky) —
+# giu draft de con tu tay kiem tra roi bam Publish, khop voi logic trong
+# main.rs (check_for_update chi thay release da Publish, bo qua Draft).
+#
+# Ngoai file nsis goc (ten kem version, vd "Asrum Launcher_0.1.0_x64-setup.exe"),
+# workflow copy them 1 ban voi ten co dinh "asrum-setup-latest.exe" va upload
+# vao cung release — dung lam link tai truc tiep khong doi ten qua tung ban.
+#
+# Can khai bao truoc 2 secret trong Settings -> Secrets and variables ->
+# Actions cua repo:
+#   TAURI_SIGNING_PRIVATE_KEY          (noi dung file .key sinh tu
+#                                        `tauri signer generate`)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD (mat khau dat luc generate key do)
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend deps
+        run: npm install
+
+      # `npm run gen-icons` tu chay qua beforeBuildCommand trong
+      # tauri.conf.json, khong can goi rieng o day. Yeu cau img/asrum.png
+      # phai da duoc commit vao repo.
+      - name: Build va tao GitHub Release (draft)
+        id: tauri_build
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Asrum Launcher ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+
+      - name: Tim file installer (.exe) vua build
+        id: find_installer
+        shell: bash
+        run: |
+          FILE=$(find src-tauri/target/release/bundle/nsis -maxdepth 1 -name "*-setup.exe" | head -n1)
+          if [ -z "$FILE" ]; then
+            echo "Khong tim thay file *-setup.exe trong bundle/nsis" >&2
+            exit 1
+          fi
+          echo "path=$FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Doi ten thanh asrum-setup-latest.exe
+        shell: bash
+        run: cp "${{ steps.find_installer.outputs.path }}" "asrum-setup-latest.exe"
+
+      - name: Upload asrum-setup-latest.exe vao release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" "asrum-setup-latest.exe" --clobber
